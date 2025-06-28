@@ -35,11 +35,35 @@ interface TransfersResponse {
   }
 }
 
+interface LaunchResult {
+  resumo: {
+    totalProdutos: number
+    sucessos: number
+    erros: number
+    status: string
+  }
+  produtosSucesso: Array<{
+    codigo: string
+    nome: string
+    quantidade: number
+    status: string
+  }>
+  produtosErro: Array<{
+    codigo: string
+    nome: string
+    quantidade: number
+    erro: string
+    status: string
+  }>
+}
+
 export default function HistoricoPage() {
   const [data, setData] = useState<TransfersResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [launchResult, setLaunchResult] = useState<LaunchResult | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     fetchTransfers()
@@ -201,14 +225,21 @@ export default function HistoricoPage() {
                     </Link>
                     <button
                       onClick={async () => {
-                        const response = await fetch(`/api/transfers/${transfer.id}/launch`, {
-                          method: 'POST'
-                        })
-                        if (response.ok) {
-                          alert('Entrada lançada no Bling com sucesso!')
-                          fetchTransfers()
-                        } else {
-                          alert('Erro ao lançar no Bling')
+                        try {
+                          const response = await fetch(`/api/transfers/${transfer.id}/launch`, {
+                            method: 'POST'
+                          })
+                          const result = await response.json()
+                          
+                          if (response.ok) {
+                            setLaunchResult(result.relatorio)
+                            setShowModal(true)
+                            fetchTransfers()
+                          } else {
+                            alert(`Erro ao lançar no Bling: ${result.error}`)
+                          }
+                        } catch (error) {
+                          alert('Erro ao comunicar com o servidor')
                         }
                       }}
                       className="text-green-600 hover:text-green-900 text-sm font-medium"
@@ -223,7 +254,137 @@ export default function HistoricoPage() {
         </ul>
       </div>
 
-      {data && data.pagination.pages > 1 && (
+      {/* Modal do Relatório */}
+      {showModal && launchResult && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Relatório de Transferência
+                </h3>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Resumo */}
+              <div className="mt-4 p-4 rounded-lg bg-gray-50">
+                <h4 className="font-semibold text-gray-900 mb-2">Resumo</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{launchResult.resumo.totalProdutos}</div>
+                    <div className="text-sm text-gray-600">Total de Produtos</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{launchResult.resumo.sucessos}</div>
+                    <div className="text-sm text-gray-600">Sucessos</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{launchResult.resumo.erros}</div>
+                    <div className="text-sm text-gray-600">Erros</div>
+                  </div>
+                </div>
+                <div className="mt-3 text-center">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    launchResult.resumo.erros === 0 
+                      ? 'bg-green-100 text-green-800' 
+                      : launchResult.resumo.sucessos === 0 
+                      ? 'bg-red-100 text-red-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {launchResult.resumo.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Produtos com Sucesso */}
+              {launchResult.produtosSucesso.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-green-800 mb-3">
+                    ✓ Produtos Transferidos com Sucesso ({launchResult.produtosSucesso.length})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-green-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {launchResult.produtosSucesso.map((produto, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{produto.codigo}</td>
+                            <td className="px-6 py-4 text-sm text-gray-900">{produto.nome}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{produto.quantidade}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                {produto.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Produtos com Erro */}
+              {launchResult.produtosErro.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-red-800 mb-3">
+                    ✗ Produtos com Erro ({launchResult.produtosErro.length})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-red-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Erro</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {launchResult.produtosErro.map((produto, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{produto.codigo}</td>
+                            <td className="px-6 py-4 text-sm text-gray-900">{produto.nome}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{produto.quantidade}</td>
+                            <td className="px-6 py-4 text-sm text-red-600">{produto.erro}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data && data.pagination.pages > 1 && !showModal && (
         <div className="mt-6 flex justify-center">
           <nav className="flex items-center space-x-2">
             <button
