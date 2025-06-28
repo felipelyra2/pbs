@@ -87,7 +87,7 @@ export class BlingScraper {
   }
 
   static validateBlingUrl(url: string): boolean {
-    const regex = /^https:\/\/www\.bling\.com\.br\/b\/doc\.view\.php\?id=\d+/
+    const regex = /^https:\/\/www\.bling\.com\.br\/(b\/)?doc\.view\.php\?id=[a-zA-Z0-9]+/
     return regex.test(url)
   }
 }
