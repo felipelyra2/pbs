@@ -36,14 +36,14 @@ export class BlingAPI {
         try {
           const result = await this.updateStock(item.codigo, item.quantidade, 'entrada')
           results.push(result)
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Erro ao ajustar estoque do produto ${item.codigo}:`, error)
           // Continua com outros produtos mesmo se um falhar
         }
       }
       
       return { success: true, results }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar entrada no Bling:', error)
       if (error.response?.data) {
         console.error('Resposta do Bling:', error.response.data)
@@ -86,7 +86,7 @@ export class BlingAPI {
 
       const response = await axios.get(`${this.baseUrl}/produtos/json/?${params}`)
       return response.data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar produtos no Bling:', error)
       throw new Error('Falha ao buscar produtos na API do Bling')
     }
@@ -106,7 +106,7 @@ export class BlingAPI {
       })
 
       return response.data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar estoque no Bling:', error)
       if (error.response?.data) {
         console.error('Resposta do Bling:', error.response.data)
