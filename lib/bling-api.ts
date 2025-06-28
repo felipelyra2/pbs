@@ -29,21 +29,26 @@ export class BlingAPI {
 
   async createEntry(entryData: BlingEntryData): Promise<any> {
     try {
-      const xmlData = this.buildEntryXML(entryData)
+      // Usa ajuste de estoque para cada produto
+      const results = []
       
-      const response = await axios.post(`${this.baseUrl}/notaFiscal/json/`, {
-        apikey: this.apiKey,
-        xml: xmlData
-      }, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+      for (const item of entryData.itens) {
+        try {
+          const result = await this.updateStock(item.codigo, item.quantidade, 'entrada')
+          results.push(result)
+        } catch (error) {
+          console.error(`Erro ao ajustar estoque do produto ${item.codigo}:`, error)
+          // Continua com outros produtos mesmo se um falhar
         }
-      })
-
-      return response.data
+      }
+      
+      return { success: true, results }
     } catch (error) {
       console.error('Erro ao criar entrada no Bling:', error)
-      throw new Error('Falha ao integrar com a API do Bling')
+      if (error.response?.data) {
+        console.error('Resposta do Bling:', error.response.data)
+      }
+      throw new Error(`Falha ao integrar com a API do Bling: ${error.response?.status || error.message}`)
     }
   }
 
@@ -89,16 +94,24 @@ export class BlingAPI {
 
   async updateStock(productCode: string, quantity: number, operation: 'entrada' | 'saida' = 'entrada'): Promise<any> {
     try {
-      const response = await axios.post(`${this.baseUrl}/estoque/${productCode}/json/`, {
-        apikey: this.apiKey,
-        operacao: operation,
-        quantidade: quantity
+      const params = new URLSearchParams()
+      params.append('apikey', this.apiKey)
+      params.append('operacao', operation)
+      params.append('quantidade', quantity.toString())
+      
+      const response = await axios.post(`${this.baseUrl}/estoque/${productCode}/json/`, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       })
 
       return response.data
     } catch (error) {
       console.error('Erro ao atualizar estoque no Bling:', error)
-      throw new Error('Falha ao atualizar estoque na API do Bling')
+      if (error.response?.data) {
+        console.error('Resposta do Bling:', error.response.data)
+      }
+      throw new Error(`Falha ao atualizar estoque na API do Bling: ${error.response?.status || error.message}`)
     }
   }
 }
