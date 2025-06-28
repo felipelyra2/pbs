@@ -29,56 +29,106 @@ export class BlingAPI {
 
   async createEntry(entryData: BlingEntryData): Promise<any> {
     try {
-      console.log('Iniciando criação de entrada no Bling:', entryData)
+      console.log('Iniciando criação de pedido de compra no Bling:', entryData)
       
-      // Usa ajuste de estoque para cada produto
-      const results = []
-      const errors = []
+      // Criar pedido de compra usando o XML
+      const pedidoXML = this.buildPurchaseOrderXML(entryData)
+      console.log('XML do pedido de compra:', pedidoXML)
       
-      for (const item of entryData.itens) {
-        try {
-          console.log(`Processando produto: ${item.codigo} - Quantidade: ${item.quantidade}`)
-          const result = await this.updateStock(item.codigo, item.quantidade, 'entrada')
-          results.push({ 
-            produto: item.codigo, 
-            success: true, 
-            resultado: result 
-          })
-        } catch (error: any) {
-          console.error(`Erro ao ajustar estoque do produto ${item.codigo}:`, error)
-          errors.push({
-            produto: item.codigo,
-            erro: error.message
-          })
-          results.push({ 
-            produto: item.codigo, 
-            success: false, 
-            erro: error.message 
-          })
+      const params = new URLSearchParams()
+      params.append('apikey', this.apiKey)
+      params.append('xml', pedidoXML)
+      
+      const response = await axios.post(`${this.baseUrl}/pedidocompra/json/`, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
-      }
+      })
+
+      console.log('Resposta do Bling:', response.data)
       
-      if (errors.length > 0) {
-        console.warn(`${errors.length} produto(s) com erro:`, errors)
+      // Verificar se houve erro na resposta do Bling
+      if (response.data?.retorno?.erros) {
+        const blingError = response.data.retorno.erros.erro
+        const errorMessage = Array.isArray(blingError) 
+          ? blingError.map(e => e.msg || e.message).join('; ')
+          : (blingError.msg || blingError.message || JSON.stringify(blingError))
+        throw new Error(`Erro do Bling: ${errorMessage}`)
       }
-      
-      // Se todos os produtos falharam, considera como erro geral
-      if (errors.length === entryData.itens.length) {
-        throw new Error(`Falha ao processar todos os produtos: ${errors.map(e => `${e.produto}: ${e.erro}`).join('; ')}`)
-      }
-      
+
+      // Se chegou aqui, a nota fiscal foi criada com sucesso
+      const results = entryData.itens.map(item => ({
+        produto: item.codigo,
+        success: true,
+        resultado: 'Pedido de compra criado com sucesso'
+      }))
+
       return { 
         success: true, 
         results,
         totalProcessados: entryData.itens.length,
-        sucessos: results.filter(r => r.success).length,
-        erros: errors.length,
-        detalhesErros: errors
+        sucessos: entryData.itens.length,
+        erros: 0,
+        detalhesErros: [],
+        pedidoCompra: response.data.retorno?.pedidoscompra?.[0] || response.data
       }
     } catch (error: any) {
       console.error('Erro ao criar entrada no Bling:', error)
-      throw new Error(`Falha ao integrar com a API do Bling: ${error.message}`)
+      if (error.response?.data) {
+        console.error('Resposta completa do Bling:', JSON.stringify(error.response.data, null, 2))
+      }
+      
+      // Se é erro do Bling, propaga
+      if (error.message.includes('Erro do Bling')) {
+        throw error
+      }
+      
+      // Criar resposta de erro para todos os produtos
+      const results = entryData.itens.map(item => ({
+        produto: item.codigo,
+        success: false,
+        erro: error.message
+      }))
+
+      const errors = entryData.itens.map(item => ({
+        produto: item.codigo,
+        erro: error.message
+      }))
+
+      return { 
+        success: false, 
+        results,
+        totalProcessados: entryData.itens.length,
+        sucessos: 0,
+        erros: entryData.itens.length,
+        detalhesErros: errors
+      }
     }
+  }
+
+  private buildPurchaseOrderXML(data: BlingEntryData): string {
+    const itensXML = data.itens.map(item => `
+      <item>
+        <codigo>${item.codigo}</codigo>
+        <descricao>${item.descricao}</descricao>
+        <quantidade>${item.quantidade}</quantidade>
+        <valorunidade>${item.valorUnidade.toFixed(2)}</valorunidade>
+        <unidade>${item.unidade}</unidade>
+      </item>
+    `).join('')
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+    <pedidocompra>
+      <numero>${data.numero}</numero>
+      <data>${data.data}</data>
+      <fornecedor>
+        <nome>${data.fornecedor.nome}</nome>
+      </fornecedor>
+      <itens>
+        ${itensXML}
+      </itens>
+      ${data.observacoes ? `<observacoes>${data.observacoes}</observacoes>` : ''}
+    </pedidocompra>`
   }
 
   private buildEntryXML(data: BlingEntryData): string {
