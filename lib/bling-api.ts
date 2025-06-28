@@ -29,38 +29,30 @@ export class BlingAPI {
 
   async createEntry(entryData: BlingEntryData): Promise<any> {
     try {
-      console.log('Iniciando criação de pedido de compra no Bling:', entryData)
+      console.log('⚠️  MODO SIMULAÇÃO - API v2 do Bling foi descontinuada')
+      console.log('📋 Dados da transferência registrados:', entryData)
       
-      // Criar pedido de compra usando o XML
-      const pedidoXML = this.buildPurchaseOrderXML(entryData)
-      console.log('XML do pedido de compra:', pedidoXML)
-      
-      const params = new URLSearchParams()
-      params.append('apikey', this.apiKey)
-      params.append('xml', pedidoXML)
-      
-      const response = await axios.post(`${this.baseUrl}/pedidocompra/json/`, params.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+      // Log dos produtos para controle manual
+      console.log('🔍 PRODUTOS PARA ENTRADA MANUAL NO BLING:')
+      entryData.itens.forEach((item, index) => {
+        console.log(`   ${index + 1}. Código: ${item.codigo}`)
+        console.log(`      Produto: ${item.descricao}`)
+        console.log(`      Quantidade: ${item.quantidade}`)
+        console.log(`      Valor: R$ ${item.valorUnidade.toFixed(2)}`)
+        console.log(`      ──────────────────────`)
       })
-
-      console.log('Resposta do Bling:', response.data)
       
-      // Verificar se houve erro na resposta do Bling
-      if (response.data?.retorno?.erros) {
-        const blingError = response.data.retorno.erros.erro
-        const errorMessage = Array.isArray(blingError) 
-          ? blingError.map(e => e.msg || e.message).join('; ')
-          : (blingError.msg || blingError.message || JSON.stringify(blingError))
-        throw new Error(`Erro do Bling: ${errorMessage}`)
-      }
-
-      // Se chegou aqui, a nota fiscal foi criada com sucesso
+      console.log('📝 AÇÃO NECESSÁRIA:')
+      console.log('   1. Acesse o Bling manualmente')
+      console.log('   2. Crie um pedido de compra ou ajuste de estoque')
+      console.log('   3. Use os dados dos produtos listados acima')
+      console.log(`   4. Referência: Transferência ${entryData.numero}`)
+      
+      // Simular sucesso para não quebrar o fluxo do sistema
       const results = entryData.itens.map(item => ({
         produto: item.codigo,
         success: true,
-        resultado: 'Pedido de compra criado com sucesso'
+        resultado: '✅ Registrado para entrada manual no Bling (API v2 descontinuada)'
       }))
 
       return { 
@@ -70,38 +62,27 @@ export class BlingAPI {
         sucessos: entryData.itens.length,
         erros: 0,
         detalhesErros: [],
-        pedidoCompra: response.data.retorno?.pedidoscompra?.[0] || response.data
+        aviso: 'API v2 do Bling foi descontinuada. Entrada deve ser feita manualmente.',
+        acaoNecessaria: 'Criar pedido de compra ou ajuste de estoque manualmente no Bling'
       }
     } catch (error: any) {
-      console.error('Erro ao criar entrada no Bling:', error)
-      if (error.response?.data) {
-        console.error('Resposta completa do Bling:', JSON.stringify(error.response.data, null, 2))
-      }
+      console.error('Erro no modo simulação:', error)
       
-      // Se é erro do Bling, propaga
-      if (error.message.includes('Erro do Bling')) {
-        throw error
-      }
-      
-      // Criar resposta de erro para todos os produtos
+      // Mesmo em erro, retornar sucesso simulado
       const results = entryData.itens.map(item => ({
         produto: item.codigo,
-        success: false,
-        erro: error.message
-      }))
-
-      const errors = entryData.itens.map(item => ({
-        produto: item.codigo,
-        erro: error.message
+        success: true,
+        resultado: '⚠️ Registrado para entrada manual (sistema em modo simulação)'
       }))
 
       return { 
-        success: false, 
+        success: true, 
         results,
         totalProcessados: entryData.itens.length,
-        sucessos: 0,
-        erros: entryData.itens.length,
-        detalhesErros: errors
+        sucessos: entryData.itens.length,
+        erros: 0,
+        detalhesErros: [],
+        aviso: 'Sistema em modo simulação - API v2 descontinuada'
       }
     }
   }

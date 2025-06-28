@@ -127,10 +127,19 @@ export async function POST(
       }))
     }
 
+    // Verificar se há aviso sobre API descontinuada
+    const avisoAPI = blingResponse.aviso ? {
+      aviso: blingResponse.aviso,
+      acaoNecessaria: blingResponse.acaoNecessaria
+    } : {}
+
     return NextResponse.json({
-      message: relatorio.resumo.status,
+      message: blingResponse.aviso ? 
+        `${relatorio.resumo.status} - ATENÇÃO: ${blingResponse.aviso}` : 
+        relatorio.resumo.status,
       relatorio,
-      blingResponse
+      blingResponse,
+      ...avisoAPI
     })
   } catch (error: any) {
     console.error('Erro ao lançar no Bling:', error)

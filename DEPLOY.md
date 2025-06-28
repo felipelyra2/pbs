@@ -182,5 +182,6 @@ Em caso de problemas:
 Para atualizar o sistema:
 1. Faça git pull das atualizações
 2. A Vercel fará deploy automático
-3. Execute migrações se necessário
-4. Teste as funcionalidades principais
+3. Execute migrações se ne
+claude
+claude
