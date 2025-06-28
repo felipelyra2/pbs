@@ -125,12 +125,22 @@ export class BlingAPI {
     try {
       console.log(`Atualizando estoque no Bling - Produto: ${productCode}, Quantidade: ${quantity}, Operação: ${operation}`)
       
+      // Criar XML para atualização de produto com estoque
+      const stockXML = `<?xml version="1.0" encoding="UTF-8"?>
+      <produto>
+        <codigo>${productCode}</codigo>
+        <estoque>${quantity}</estoque>
+        <deposito>
+          <deposito>1</deposito>
+          <estoque>${quantity}</estoque>
+        </deposito>
+      </produto>`
+      
       const params = new URLSearchParams()
       params.append('apikey', this.apiKey)
-      params.append('operacao', operation)
-      params.append('quantidade', quantity.toString())
+      params.append('xml', stockXML)
       
-      const response = await axios.post(`${this.baseUrl}/estoque/${productCode}/json/`, params.toString(), {
+      const response = await axios.post(`${this.baseUrl}/produto/${productCode}/json/`, params.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
