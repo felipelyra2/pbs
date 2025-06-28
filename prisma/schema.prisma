@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  transfers Transfer[]
+  
+  @@map("users")
+}
+
+model Store {
+  id           String   @id @default(cuid())
+  name         String
+  blingApiKey  String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  transfers    Transfer[]
+  
+  @@map("stores")
+}
+
+model Transfer {
+  id           String   @id @default(cuid())
+  blingUrl     String
+  invoiceId    String
+  status       String   @default("pending") // pending, confirmed, completed
+  totalValue   Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  confirmedAt  DateTime?
+  
+  userId       String
+  user         User @relation(fields: [userId], references: [id])
+  
+  storeId      String
+  store        Store @relation(fields: [storeId], references: [id])
+  
+  products     TransferProduct[]
+  
+  @@map("transfers")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  blingId     String   @unique
+  name        String
+  code        String?
+  unit        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  transfers   TransferProduct[]
+  
+  @@map("products")
+}
+
+model TransferProduct {
+  id               String   @id @default(cuid())
+  quantity         Float
+  confirmedQty     Float    @default(0)
+  unitPrice        Float
+  totalPrice       Float
+  isConfirmed      Boolean  @default(false)
+  
+  transferId       String
+  transfer         Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  
+  @@map("transfer_products")
+}
