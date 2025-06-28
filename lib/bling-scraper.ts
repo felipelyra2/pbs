@@ -42,19 +42,22 @@ export class BlingScraper {
       
       const products: BlingProduct[] = []
       
-      $('table.tabela-produtos tbody tr').each((index, element) => {
+      // Procura pela tabela de produtos usando a classe 'grid'
+      $('table.grid tr').each((index, element) => {
         const $row = $(element)
         const cells = $row.find('td')
         
-        if (cells.length >= 6) {
-          const code = $(cells[0]).text().trim()
-          const name = $(cells[1]).text().trim()
-          const quantity = parseFloat($(cells[2]).text().replace(',', '.')) || 0
-          const unit = $(cells[3]).text().trim()
+        // Pula a linha de cabeçalho e linhas de totais
+        if (cells.length >= 6 && index > 0) {
+          const name = $(cells[0]).text().trim()
+          const code = $(cells[1]).text().trim()
+          const unit = $(cells[2]).text().trim()
+          const quantity = parseFloat($(cells[3]).text().replace(',', '.')) || 0
           const unitPrice = parseFloat($(cells[4]).text().replace('R$', '').replace('.', '').replace(',', '.')) || 0
           const totalPrice = parseFloat($(cells[5]).text().replace('R$', '').replace('.', '').replace(',', '.')) || 0
           
-          if (name && quantity > 0) {
+          // Verifica se é uma linha de produto válida (não é linha de totais)
+          if (name && quantity > 0 && !name.includes('Total') && !name.includes('Desconto')) {
             products.push({
               id: `${invoiceId}_${index}`,
               name,
