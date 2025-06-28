@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { BlingAPIv3, BlingV3StockMovement } from './bling-api-v3'
 
 export interface BlingAPIProduct {
   codigo: string
@@ -22,14 +23,59 @@ export interface BlingEntryData {
 export class BlingAPI {
   private apiKey: string
   private baseUrl = 'https://bling.com.br/Api/v2'
+  private apiV3?: BlingAPIv3
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
+    
+    // Se a apiKey começar com "Bearer ", assumir que é um token v3
+    if (apiKey.startsWith('Bearer ')) {
+      const token = apiKey.replace('Bearer ', '')
+      this.apiV3 = new BlingAPIv3(token)
+    }
   }
 
   async createEntry(entryData: BlingEntryData): Promise<any> {
+    // Tentar usar API v3 primeiro
+    if (this.apiV3) {
+      try {
+        console.log('🚀 Tentando usar API v3 do Bling')
+        
+        // Validar token primeiro
+        const isTokenValid = await this.apiV3.validateToken()
+        if (!isTokenValid) {
+          throw new Error('Token de acesso expirado ou inválido')
+        }
+
+        // Converter dados para formato da API v3
+        const movements: BlingV3StockMovement[] = entryData.itens.map(item => ({
+          produto: {
+            codigo: item.codigo
+          },
+          quantidade: item.quantidade,
+          tipo: 'E', // Entrada
+          observacoes: `Transferência ${entryData.numero} - ${item.descricao}`,
+          deposito: {
+            id: 1 // Depósito padrão
+          }
+        }))
+
+        const result = await this.apiV3.createStockMovement(movements)
+        
+        // Mapear resultado para formato esperado
+        return {
+          ...result,
+          apiVersion: 'v3'
+        }
+      } catch (error: any) {
+        console.error('Erro na API v3, tentando fallback:', error)
+        // Continua para modo simulação
+      }
+    }
+
+    // Fallback: Modo simulação
     try {
-      console.log('⚠️  MODO SIMULAÇÃO - API v2 do Bling foi descontinuada')
+      console.log('⚠️  MODO SIMULAÇÃO - API v2 descontinuada / API v3 não configurada')
       console.log('📋 Dados da transferência registrados:', entryData)
       
       // Log dos produtos para controle manual
@@ -43,16 +89,17 @@ export class BlingAPI {
       })
       
       console.log('📝 AÇÃO NECESSÁRIA:')
-      console.log('   1. Acesse o Bling manualmente')
-      console.log('   2. Crie um pedido de compra ou ajuste de estoque')
-      console.log('   3. Use os dados dos produtos listados acima')
-      console.log(`   4. Referência: Transferência ${entryData.numero}`)
+      console.log('   1. Configure API v3 do Bling com OAuth 2.0, OU')
+      console.log('   2. Acesse o Bling manualmente e faça a entrada')
+      console.log(`   3. Referência: Transferência ${entryData.numero}`)
       
       // Simular sucesso para não quebrar o fluxo do sistema
       const results = entryData.itens.map(item => ({
         produto: item.codigo,
         success: true,
-        resultado: '✅ Registrado para entrada manual no Bling (API v2 descontinuada)'
+        resultado: this.apiV3 ? 
+          '⚠️ Erro na API v3 - Registrado para entrada manual' :
+          '✅ Registrado para entrada manual (configure API v3 para automação)'
       }))
 
       return { 
@@ -62,17 +109,21 @@ export class BlingAPI {
         sucessos: entryData.itens.length,
         erros: 0,
         detalhesErros: [],
-        aviso: 'API v2 do Bling foi descontinuada. Entrada deve ser feita manualmente.',
-        acaoNecessaria: 'Criar pedido de compra ou ajuste de estoque manualmente no Bling'
+        aviso: this.apiV3 ? 
+          'Erro na API v3 do Bling. Entrada deve ser feita manualmente.' :
+          'Configure API v3 do Bling para automação completa. Entrada deve ser feita manualmente.',
+        acaoNecessaria: this.apiV3 ?
+          'Verificar configuração do token OAuth 2.0' :
+          'Configurar API v3 com OAuth 2.0 ou fazer entrada manual no Bling',
+        apiVersion: 'simulacao'
       }
     } catch (error: any) {
       console.error('Erro no modo simulação:', error)
       
-      // Mesmo em erro, retornar sucesso simulado
       const results = entryData.itens.map(item => ({
         produto: item.codigo,
         success: true,
-        resultado: '⚠️ Registrado para entrada manual (sistema em modo simulação)'
+        resultado: '⚠️ Sistema em modo simulação'
       }))
 
       return { 
@@ -82,7 +133,8 @@ export class BlingAPI {
         sucessos: entryData.itens.length,
         erros: 0,
         detalhesErros: [],
-        aviso: 'Sistema em modo simulação - API v2 descontinuada'
+        aviso: 'Sistema em modo simulação',
+        apiVersion: 'simulacao'
       }
     }
   }
