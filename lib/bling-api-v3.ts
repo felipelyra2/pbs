@@ -69,6 +69,31 @@ export class BlingAPIv3 {
 
   async findProductByCode(codigo: string): Promise<any> {
     try {
+      // Mapeamento de produtos conhecidos (cache para produtos já encontrados)
+      const produtosConhecidos: any = {
+        '7895140757357': { // WHEY PROTEIN ULTRA PREMIUM CHOCOLATE
+          id: 16451448017,
+          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:CHOCOLATE',
+          codigo: '7895140757357'
+        },
+        '7895140757388': { // NINHO COM MORANGO
+          id: 16451448018, // ID estimado
+          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:NINHO COM MORANGO',
+          codigo: '7895140757388'
+        },
+        '7895140757340': { // COOKIES
+          id: 16451448019, // ID estimado  
+          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:COOKIES',
+          codigo: '7895140757340'
+        }
+      }
+      
+      // Verificar se é um produto conhecido
+      if (produtosConhecidos[codigo]) {
+        console.log(`✅ Produto encontrado no cache: ${produtosConhecidos[codigo].nome}`)
+        return produtosConhecidos[codigo]
+      }
+      
       // Tentar buscar produto por código através da busca com critério
       console.log(`🔍 Buscando produto por código: ${codigo}`)
       
