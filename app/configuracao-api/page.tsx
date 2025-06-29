@@ -1,14 +1,70 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 export default function ConfiguracaoAPIPage() {
+  const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [config, setConfig] = useState({
     clientId: '',
     clientSecret: '',
-    accessToken: ''
+    accessToken: '',
+    authCode: ''
   })
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    // Verificar parâmetros da URL
+    const urlError = searchParams.get('error')
+    const urlCode = searchParams.get('code')
+    const urlStep = searchParams.get('step')
+
+    if (urlError) {
+      setError(`Erro na autorização: ${urlError}`)
+    }
+
+    if (urlCode) {
+      setConfig(prev => ({ ...prev, authCode: urlCode }))
+      setSuccess('✅ Código de autorização recebido com sucesso!')
+    }
+
+    if (urlStep) {
+      setStep(parseInt(urlStep))
+    }
+  }, [searchParams])
+
+  const exchangeCodeForToken = async () => {
+    try {
+      setError('')
+      
+      // Aqui faria a troca do código pelo token
+      // Por ora, vamos simular
+      const response = await fetch('/api/auth/bling/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: config.authCode,
+          clientId: config.clientId,
+          clientSecret: config.clientSecret
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setConfig(prev => ({ ...prev, accessToken: data.access_token }))
+        setSuccess('✅ Token de acesso obtido com sucesso!')
+      } else {
+        const errorData = await response.json()
+        setError(`Erro ao obter token: ${errorData.error}`)
+      }
+    } catch (error: any) {
+      setError(`Erro: ${error.message}`)
+    }
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0">
@@ -23,6 +79,29 @@ export default function ConfiguracaoAPIPage() {
         </div>
 
         <div className="p-6">
+          {/* Mensagens de erro e sucesso */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span className="ml-2 text-sm text-red-700">{error}</span>
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="ml-2 text-sm text-green-700">{success}</span>
+              </div>
+            </div>
+          )}
+
           {/* Status Atual */}
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center">
@@ -146,31 +225,61 @@ export default function ConfiguracaoAPIPage() {
             {step >= 3 && (
               <div className="border rounded-lg p-4 border-blue-200 bg-blue-50">
                 <h3 className="text-lg font-medium text-gray-900">
-                  3. Configurar Token de Acesso
+                  3. Obter Token de Acesso
                 </h3>
                 
                 <div className="mt-3 text-sm text-gray-600">
-                  <p className="mb-4">Cole o token de acesso gerado pelo processo de autorização:</p>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Access Token</label>
-                    <textarea
-                      value={config.accessToken}
-                      onChange={(e) => setConfig(prev => ({ ...prev, accessToken: e.target.value }))}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      rows={3}
-                      placeholder="Cole aqui o token de acesso da API v3"
-                    />
-                  </div>
+                  {config.authCode ? (
+                    <div>
+                      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <p className="text-sm text-green-700">
+                          ✅ Código de autorização recebido!
+                        </p>
+                        <code className="block mt-2 p-2 bg-green-100 rounded text-xs break-all">
+                          {config.authCode}
+                        </code>
+                      </div>
+                      
+                      <p className="mb-4">Clique para trocar o código pelo token de acesso:</p>
+                      
+                      <button
+                        onClick={exchangeCodeForToken}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                      >
+                        Obter Token de Acesso
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mb-4">Aguardando código de autorização... Certifique-se de ter clicado no botão "Autorizar no Bling" no passo anterior.</p>
+                  )}
                   
                   {config.accessToken && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                      <p className="text-sm text-green-700">
-                        ✅ Token configurado! Para ativar a API v3, adicione esta configuração nas variáveis de ambiente:
+                      <p className="text-sm text-green-700 mb-2">
+                        ✅ Token de acesso obtido com sucesso!
                       </p>
-                      <code className="block mt-2 p-2 bg-green-100 rounded text-xs">
-                        BLING_API_V3_TOKEN=Bearer {config.accessToken}
+                      <p className="text-sm text-gray-700 mb-2">
+                        Para ativar a API v3, configure na sua loja com este valor:
+                      </p>
+                      <code className="block p-2 bg-green-100 rounded text-xs break-all">
+                        Bearer {config.accessToken}
                       </code>
+                      <p className="text-xs text-gray-600 mt-2">
+                        💡 Vá em "Lojas" → "Editar" → cole este token no campo "Chave da API do Bling"
+                      </p>
+                    </div>
+                  )}
+
+                  {!config.accessToken && config.authCode && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700">Ou cole o token manualmente:</label>
+                      <textarea
+                        value={config.accessToken}
+                        onChange={(e) => setConfig(prev => ({ ...prev, accessToken: e.target.value }))}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        rows={3}
+                        placeholder="Cole aqui o token de acesso se obteve manualmente"
+                      />
                     </div>
                   )}
                 </div>
