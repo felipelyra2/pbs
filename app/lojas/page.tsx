@@ -14,9 +14,11 @@ export default function LojasPage() {
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingStore, setEditingStore] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    blingApiKey: ''
+    blingApiKey: '',
+    isActive: true
   })
 
   useEffect(() => {
@@ -41,8 +43,11 @@ export default function LojasPage() {
     e.preventDefault()
     
     try {
-      const response = await fetch('/api/stores', {
-        method: 'POST',
+      const url = editingStore ? `/api/stores/${editingStore}` : '/api/stores'
+      const method = editingStore ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -50,16 +55,35 @@ export default function LojasPage() {
       })
 
       if (response.ok) {
-        setFormData({ name: '', blingApiKey: '' })
+        setFormData({ name: '', blingApiKey: '', isActive: true })
         setShowForm(false)
+        setEditingStore(null)
         fetchStores()
-        alert('Loja criada com sucesso!')
+        alert(editingStore ? 'Loja atualizada com sucesso!' : 'Loja criada com sucesso!')
       } else {
         const error = await response.json()
         alert(`Erro: ${error.error}`)
       }
     } catch (error) {
-      alert('Erro ao criar loja')
+      alert('Erro ao salvar loja')
+    }
+  }
+
+  const handleDelete = async (storeId: string) => {
+    try {
+      const response = await fetch(`/api/stores/${storeId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchStores()
+        alert('Loja excluída com sucesso!')
+      } else {
+        const error = await response.json()
+        alert(`Erro: ${error.error}`)
+      }
+    } catch (error) {
+      alert('Erro ao excluir loja')
     }
   }
 
@@ -92,7 +116,9 @@ export default function LojasPage() {
 
       {showForm && (
         <div className="mt-6 bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Adicionar Nova Loja</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            {editingStore ? 'Editar Loja' : 'Adicionar Nova Loja'}
+          </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -125,11 +151,15 @@ export default function LojasPage() {
                 type="submit"
                 className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
               >
-                Salvar
+                {editingStore ? 'Atualizar' : 'Salvar'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingStore(null)
+                  setFormData({ name: '', blingApiKey: '', isActive: true })
+                }}
                 className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Cancelar
@@ -158,6 +188,32 @@ export default function LojasPage() {
                         {store.isActive ? 'Ativa' : 'Inativa'}
                       </span>
                     </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setFormData({
+                          name: store.name,
+                          blingApiKey: store.blingApiKey,
+                          isActive: store.isActive
+                        })
+                        setEditingStore(store.id)
+                        setShowForm(true)
+                      }}
+                      className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Tem certeza que deseja excluir a loja "${store.name}"?`)) {
+                          handleDelete(store.id)
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                    >
+                      Excluir
+                    </button>
                   </div>
                 </div>
                 <div className="mt-2">

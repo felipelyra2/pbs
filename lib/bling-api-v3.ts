@@ -29,8 +29,13 @@ export class BlingAPIv3 {
   }
 
   private getHeaders() {
+    // Se o token já tem Bearer, usar direto, senão adicionar
+    const authHeader = this.accessToken.startsWith('Bearer ') 
+      ? this.accessToken 
+      : `Bearer ${this.accessToken}`
+      
     return {
-      'Authorization': `Bearer ${this.accessToken}`,
+      'Authorization': authHeader,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     }

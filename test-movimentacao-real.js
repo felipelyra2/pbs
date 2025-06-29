@@ -2,12 +2,12 @@
 const axios = require('axios');
 
 // Configurações - SUBSTITUA POR UM TOKEN VÁLIDO
-const TOKEN = 'SEU_TOKEN_VÁLIDO_AQUI';
+const TOKEN = 'db4b81bf8351ed1f83da0ccce03ed9f39e03d9f5';
 const BASE_URL = 'https://www.bling.com.br/Api/v3';
 
 // Headers padrão
 const headers = {
-  'Authorization': `Bearer ${TOKEN}`,
+  'Authorization': TOKEN.startsWith('Bearer ') ? TOKEN : `Bearer ${TOKEN}`,
   'Content-Type': 'application/json',
   'Accept': 'application/json'
 };
