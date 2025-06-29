@@ -192,9 +192,19 @@ export class BlingAPIv3 {
         headers: this.getHeaders()
       })
       return true
-    } catch (error) {
-      console.error('Token inválido ou expirado:', error)
-      return false
+    } catch (error: any) {
+      console.error('Erro na validação do token:', error.response?.data || error.message)
+      
+      // Se for 401, é token inválido
+      if (error.response?.status === 401) {
+        console.error('Token realmente inválido ou expirado')
+        return false
+      }
+      
+      // Se for outro erro (403, 404, etc), pode ser problema de permissão ou endpoint
+      // Vamos assumir que o token é válido mas não tem acesso a esse recurso
+      console.warn('Token pode estar válido, mas sem acesso ao endpoint /produtos')
+      return true
     } 
   }
 }

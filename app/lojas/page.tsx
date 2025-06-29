@@ -69,18 +69,32 @@ export default function LojasPage() {
     }
   }
 
-  const handleDelete = async (storeId: string) => {
+  const handleDelete = async (storeId: string, force = false) => {
     try {
-      const response = await fetch(`/api/stores/${storeId}`, {
+      const url = force ? `/api/stores/${storeId}?force=true` : `/api/stores/${storeId}`
+      const response = await fetch(url, {
         method: 'DELETE'
       })
 
       if (response.ok) {
         fetchStores()
-        alert('Loja excluída com sucesso!')
+        const result = await response.json()
+        alert(result.message)
       } else {
         const error = await response.json()
-        alert(`Erro: ${error.error}`)
+        
+        // Se tem transferências e pode forçar exclusão
+        if (error.canForceDelete) {
+          const forceDelete = confirm(
+            `${error.error}\n\nDeseja excluir a loja e TODAS as ${error.transfersCount} transferências associadas?\n\n⚠️ ATENÇÃO: Esta ação não pode ser desfeita!`
+          )
+          
+          if (forceDelete) {
+            handleDelete(storeId, true)
+          }
+        } else {
+          alert(`Erro: ${error.error}`)
+        }
       }
     } catch (error) {
       alert('Erro ao excluir loja')

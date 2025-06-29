@@ -86,23 +86,51 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const url = new URL(request.url)
+    const force = url.searchParams.get('force') === 'true'
+
     // Verificar se a loja tem transferências associadas
     const transfersCount = await prisma.transfer.count({
       where: { storeId: params.id }
     })
 
-    if (transfersCount > 0) {
+    if (transfersCount > 0 && !force) {
       return NextResponse.json(
-        { error: `Não é possível excluir a loja. Ela possui ${transfersCount} transferência(s) associada(s).` },
+        { 
+          error: `A loja possui ${transfersCount} transferência(s) associada(s).`,
+          canForceDelete: true,
+          transfersCount 
+        },
         { status: 400 }
       )
+    }
+
+    // Se force=true, excluir as transferências primeiro
+    if (force && transfersCount > 0) {
+      // Excluir produtos das transferências primeiro
+      await prisma.transferProduct.deleteMany({
+        where: {
+          transfer: {
+            storeId: params.id
+          }
+        }
+      })
+
+      // Excluir as transferências
+      await prisma.transfer.deleteMany({
+        where: { storeId: params.id }
+      })
     }
 
     await prisma.store.delete({
       where: { id: params.id }
     })
 
-    return NextResponse.json({ message: 'Loja excluída com sucesso' })
+    return NextResponse.json({ 
+      message: force && transfersCount > 0 
+        ? `Loja e ${transfersCount} transferência(s) excluídas com sucesso` 
+        : 'Loja excluída com sucesso' 
+    })
   } catch (error: any) {
     console.error('Erro ao excluir loja:', error)
 
