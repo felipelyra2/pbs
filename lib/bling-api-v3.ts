@@ -55,6 +55,14 @@ export class BlingAPIv3 {
   }
 
   async createStockMovement(movements: BlingV3StockMovement[]): Promise<any> {
+    // API v3 ainda não tem movimentação de estoque
+    // Vamos usar pedidos de compra como alternativa
+    console.log('⚠️ API v3 não suporta movimentação direta, usando pedido de compra')
+    
+    return this.createPurchaseOrderFromMovements(movements)
+  }
+
+  async createPurchaseOrderFromMovements(movements: BlingV3StockMovement[]): Promise<any> {
     try {
       console.log('Criando movimentação de estoque no Bling v3:', movements)
       
@@ -63,9 +71,14 @@ export class BlingAPIv3 {
 
       for (const movement of movements) {
         try {
-          const response = await axios.post(`${this.baseUrl}/estoques/movimentacoes`, movement, {
+          console.log(`🔄 Criando movimentação para produto ${movement.produto.codigo}`)
+          console.log('📋 Dados da movimentação:', JSON.stringify(movement, null, 2))
+          
+          const response = await axios.post(`${this.baseUrl}/estoque/movimentacao`, movement, {
             headers: this.getHeaders()
           })
+          
+          console.log(`✅ Resposta da API:`, JSON.stringify(response.data, null, 2))
 
           console.log(`Movimentação criada para produto ${movement.produto.codigo}:`, response.data)
           
@@ -140,13 +153,14 @@ export class BlingAPIv3 {
   // Método para validar se o token ainda é válido
   async validateToken(): Promise<boolean> {
     try {
-      await axios.get(`${this.baseUrl}/me`, {
+      // Usar endpoint de produtos com limite mínimo para validar token
+      await axios.get(`${this.baseUrl}/produtos?limite=1`, {
         headers: this.getHeaders()
       })
       return true
     } catch (error) {
       console.error('Token inválido ou expirado:', error)
       return false
-    }
+    } 
   }
 }

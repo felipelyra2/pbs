@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { BlingAPI } from '@/lib/bling-api'
+import { BlingAPIv3 } from '@/lib/bling-api-v3'
 
 // Marcar como dinâmico para evitar erro de renderização estática
 export const dynamic = 'force-dynamic'
@@ -45,7 +45,22 @@ export async function POST(
       )
     }
 
-    const blingAPI = new BlingAPI(blingApiKey)
+    console.log('🔐 Token da loja:', blingApiKey?.substring(0, 20) + '...')
+    console.log('🏪 Nome da loja:', transfer.store.name)
+    console.log('🔄 USANDO API V3 - VERSÃO CORRIGIDA')
+
+    const blingAPI = new BlingAPIv3(blingApiKey)
+
+    // Testar se o token é válido
+    const tokenValid = await blingAPI.validateToken()
+    console.log('✅ Token válido:', tokenValid)
+    
+    if (!tokenValid) {
+      return NextResponse.json(
+        { error: 'Token do Bling inválido ou expirado. Verifique a configuração da loja.' },
+        { status: 400 }
+      )
+    }
 
     // Validar se há produtos confirmados
     if (transfer.products.length === 0) {
@@ -67,24 +82,21 @@ export async function POST(
       )
     }
 
-    const entryData = {
-      numero: `TRANS-${transfer.invoiceId}`,
-      data: new Date().toISOString().split('T')[0],
-      fornecedor: {
-        nome: 'Transferência entre lojas'
+    // Criar movimentações de estoque para API v3
+    const movements = transfer.products.map(product => ({
+      produto: {
+        codigo: product.product.code || product.product.blingId
       },
-      itens: transfer.products.map(product => ({
-        codigo: product.product.code || product.product.blingId,
-        descricao: product.product.name,
-        quantidade: product.confirmedQty,
-        valorUnidade: product.unitPrice,
-        valorTotal: product.confirmedQty * product.unitPrice,
-        unidade: product.product.unit || 'UN'
-      })),
-      observacoes: `Transferência automática - Nota original: ${transfer.invoiceId}`
-    }
+      quantidade: product.confirmedQty,
+      tipo: 'E' as const, // Entrada
+      observacoes: `Transferência automática - Nota: ${transfer.invoiceId} - ${product.product.name}`
+    }))
 
-    const blingResponse = await blingAPI.createEntry(entryData)
+    console.log('📦 Movimentações a serem criadas:', JSON.stringify(movements, null, 2))
+
+    const blingResponse = await blingAPI.createStockMovement(movements)
+    
+    console.log('🔄 Resposta do Bling:', JSON.stringify(blingResponse, null, 2))
 
     // Atualizar status da transferência
     await prisma.transfer.update({
@@ -94,17 +106,17 @@ export async function POST(
       }
     })
 
-    // Preparar relatório detalhado
-    const produtosSucesso = blingResponse.results.filter((r: any) => r.success)
-    const produtosErro = blingResponse.results.filter((r: any) => !r.success)
+    // Preparar relatório detalhado para API v3
+    const produtosSucesso = blingResponse.results?.filter((r: any) => r.success) || []
+    const produtosErro = blingResponse.results?.filter((r: any) => !r.success) || []
 
     const relatorio = {
       resumo: {
-        totalProdutos: blingResponse.totalProcessados,
-        sucessos: blingResponse.sucessos,
-        erros: blingResponse.erros,
-        status: blingResponse.erros === 0 ? 'Todos os produtos transferidos com sucesso' : 
-                blingResponse.sucessos === 0 ? 'Falha em todos os produtos' : 
+        totalProdutos: blingResponse.totalProcessados || 0,
+        sucessos: blingResponse.sucessos || 0,
+        erros: blingResponse.erros || 0,
+        status: (blingResponse.erros || 0) === 0 ? 'Todos os produtos transferidos com sucesso' : 
+                (blingResponse.sucessos || 0) === 0 ? 'Falha em todos os produtos' : 
                 'Transferência parcial - alguns produtos com erro'
       },
       produtosSucesso: produtosSucesso.map((p: any) => ({
@@ -115,7 +127,7 @@ export async function POST(
         quantidade: transfer.products.find(tp => 
           (tp.product.code || tp.product.blingId) === p.produto
         )?.confirmedQty || 0,
-        status: 'Transferido com sucesso'
+        status: 'Movimentação criada com sucesso'
       })),
       produtosErro: produtosErro.map((p: any) => ({
         codigo: p.produto,
@@ -126,23 +138,15 @@ export async function POST(
           (tp.product.code || tp.product.blingId) === p.produto
         )?.confirmedQty || 0,
         erro: p.erro,
-        status: 'Erro na transferência'
+        status: 'Erro na movimentação'
       }))
     }
 
-    // Verificar se há aviso sobre API descontinuada
-    const avisoAPI = blingResponse.aviso ? {
-      aviso: blingResponse.aviso,
-      acaoNecessaria: blingResponse.acaoNecessaria
-    } : {}
-
     return NextResponse.json({
-      message: blingResponse.aviso ? 
-        `${relatorio.resumo.status} - ATENÇÃO: ${blingResponse.aviso}` : 
-        relatorio.resumo.status,
+      message: relatorio.resumo.status,
       relatorio,
       blingResponse,
-      ...avisoAPI
+      apiVersion: 'v3'
     })
   } catch (error: any) {
     console.error('Erro ao lançar no Bling:', error)
