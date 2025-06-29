@@ -5,8 +5,15 @@ import { useSearchParams } from 'next/navigation'
 
 // Função para obter a URL base do ambiente atual
 function getBaseUrl() {
-  // Sempre usar URL de produção para OAuth callback
-  return 'https://pbs-production-9e7c.up.railway.app'
+  if (typeof window !== 'undefined') {
+    // Se está em localhost, usar URL de produção para OAuth
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'https://pbs-production-9e7c.up.railway.app'
+    }
+    // Caso contrário, usar a URL atual
+    return window.location.origin
+  }
+  return process.env.NEXTAUTH_URL || 'https://pbs-production-9e7c.up.railway.app'
 }
 
 function ConfiguracaoAPIContent() {
