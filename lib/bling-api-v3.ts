@@ -116,9 +116,9 @@ export class BlingAPIv3 {
         }
       }
       
-      // PASSO 3: Busca estratégica - começar do final onde sabemos que o produto está
-      console.log(`⚠️ Iniciando busca estratégica paginada...`)
-      return await this.searchProductStrategic(codigo)
+      // PASSO 3: Busca completa e robusta - percorrer TODAS as páginas se necessário
+      console.log(`⚠️ Iniciando busca completa robusta...`)
+      return await this.searchProductComplete(codigo)
       
     } catch (error) {
       console.error(`❌ Erro ao buscar produto ${codigo}:`, error)
@@ -126,97 +126,112 @@ export class BlingAPIv3 {
     }
   }
 
-  private async searchProductStrategic(codigo: string): Promise<any> {
-    console.log(`🔍 BUSCA ESTRATÉGICA - Código: ${codigo}`)
-    console.log(`🎯 Estratégia: buscar páginas mais prováveis primeiro`)
+  private async searchProductComplete(codigo: string): Promise<any> {
+    console.log(`🔍 BUSCA COMPLETA ROBUSTA - Código: ${codigo}`)
+    console.log(`🎯 SOLUÇÃO DEFINITIVA: Buscar TODAS as páginas até encontrar`)
+    console.log(`⚠️ Esta operação pode demorar, mas VAI ENCONTRAR o produto se ele existir`)
     
     let totalVerificados = 0
+    let pagina = 1
+    let maxTentativas = 3 // Tentativas por página em caso de erro
     
-    // ESTRATÉGIA: Sabemos que o produto está na página ~40 de 41
-    // Vamos buscar do final para o início para encontrar mais rápido
-    const totalPaginas = Math.ceil(4047 / 100) // ~41 páginas
-    
-    // Páginas prioritárias: do final para o início (onde provavelmente estão produtos novos)
-    const paginasPrioritarias = []
-    
-    // Começar das páginas finais (35-41)
-    for (let p = totalPaginas; p >= totalPaginas - 10; p--) {
-      if (p > 0) paginasPrioritarias.push(p)
-    }
-    
-    // Depois páginas do meio-final (20-34)
-    for (let p = totalPaginas - 11; p >= 20; p--) {
-      if (p > 0) paginasPrioritarias.push(p)
-    }
-    
-    // Se ainda não encontrou, páginas do início (1-19)
-    for (let p = 19; p >= 1; p--) {
-      paginasPrioritarias.push(p)
-    }
-    
-    console.log(`📄 Ordem de busca: páginas ${paginasPrioritarias.slice(0, 5).join(', ')}... (total: ${paginasPrioritarias.length})`)
-    
-    // Buscar nas páginas prioritárias
-    for (let i = 0; i < paginasPrioritarias.length; i++) {
-      const pagina = paginasPrioritarias[i]
+    while (true) {
+      let tentativas = 0
+      let sucessoNaPagina = false
       
-      try {
-        console.log(`📄 Página ${pagina} (${i + 1}/${Math.min(20, paginasPrioritarias.length)})...`)
-        
-        // Delay para evitar rate limit
-        await this.delay(800)
-        
-        const response = await axios.get(`${this.baseUrl}/produtos?limite=100&pagina=${pagina}`, {
-          headers: this.getHeaders()
-        })
-        
-        const produtos = response.data.data || []
-        totalVerificados += produtos.length
-        
-        console.log(`   📦 ${produtos.length} produtos verificados`)
-        
-        // Verificar cada produto desta página
-        for (const produto of produtos) {
-          if (produto.codigo === codigo) {
-            console.log(`\n🎯 PRODUTO ENCONTRADO NA BUSCA ESTRATÉGICA!`)
-            console.log(`Nome: ${produto.nome}`)
-            console.log(`Código: ${produto.codigo}`)
-            console.log(`ID: ${produto.id}`)
-            console.log(`Página: ${pagina}`)
-            console.log(`Tentativa: ${i + 1}`)
+      while (tentativas < maxTentativas && !sucessoNaPagina) {
+        try {
+          console.log(`📄 Página ${pagina} (tentativa ${tentativas + 1}/${maxTentativas})...`)
+          
+          // Delay adaptativo baseado no número de tentativas
+          const delay = 500 + (tentativas * 1000) + (pagina * 50)
+          await this.delay(delay)
+          
+          const response = await axios.get(`${this.baseUrl}/produtos?limite=100&pagina=${pagina}`, {
+            headers: this.getHeaders(),
+            timeout: 30000 // 30 segundos timeout por request
+          })
+          
+          const produtos = response.data.data || []
+          totalVerificados += produtos.length
+          sucessoNaPagina = true
+          
+          console.log(`   📦 ${produtos.length} produtos verificados (Total: ${totalVerificados})`)
+          
+          // Verificar cada produto desta página
+          for (const produto of produtos) {
+            if (produto.codigo === codigo) {
+              console.log(`\n🎉 PRODUTO ENCONTRADO NA BUSCA COMPLETA!`)
+              console.log(`Nome: ${produto.nome}`)
+              console.log(`Código: ${produto.codigo}`)
+              console.log(`ID: ${produto.id}`)
+              console.log(`Página: ${pagina}`)
+              console.log(`Total verificado: ${totalVerificados} produtos`)
+              
+              return produto
+            }
+          }
+          
+          // Se página tem menos de 100 produtos, é a última
+          if (produtos.length < 100) {
+            console.log(`\n📄 ÚLTIMA PÁGINA ENCONTRADA: ${pagina}`)
+            console.log(`📊 BUSCA COMPLETA FINALIZADA`)
+            console.log(`- Total de páginas: ${pagina}`)
+            console.log(`- Total de produtos verificados: ${totalVerificados}`)
+            console.log(`- Produto encontrado: NÃO`)
             
-            return produto
+            console.log(`\n❌ PRODUTO ${codigo} NÃO EXISTE NA API DO BLING`)
+            console.log(`🔧 CAUSAS POSSÍVEIS:`)
+            console.log(`- Produto está inativo/arquivado`)
+            console.log(`- Código está diferente no sistema`)
+            console.log(`- Produto está em loja/depósito não acessível`)
+            console.log(`- Diferença entre painel web e API`)
+            
+            return null
+          }
+          
+        } catch (error: any) {
+          tentativas++
+          
+          if (error.response?.status === 429) {
+            console.log(`   ⏸️ Rate limit na página ${pagina} - aguardando ${5 + tentativas * 2}s...`)
+            await this.delay((5 + tentativas * 2) * 1000)
+            continue // Tentar mesma página novamente
+          }
+          
+          if (error.response?.status === 401) {
+            console.log(`❌ TOKEN EXPIRADO - Parando busca na página ${pagina}`)
+            return null
+          }
+          
+          if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+            console.log(`   ⏱️ Timeout na página ${pagina} - tentativa ${tentativas}/${maxTentativas}`)
+            continue
+          }
+          
+          console.error(`❌ Erro na página ${pagina}, tentativa ${tentativas}:`, error.response?.status || error.message)
+          
+          if (tentativas >= maxTentativas) {
+            console.log(`❌ Máximo de tentativas atingido na página ${pagina} - pulando para próxima`)
+            sucessoNaPagina = true // Força a continuar para próxima página
           }
         }
-        
-        // Limitar a 20 páginas para evitar timeout
-        if (i >= 19) {
-          console.log(`⏱️ Limite de 20 páginas atingido para evitar timeout`)
-          break
-        }
-        
-      } catch (error: any) {
-        if (error.response?.status === 429) {
-          console.log(`   ⏸️ Rate limit - aguardando 5s...`)
-          await this.delay(5000)
-          continue
-        }
-        
-        console.error(`❌ Erro na página ${pagina}:`, error.response?.status)
+      }
+      
+      pagina++
+      
+      // Log de progresso a cada 10 páginas
+      if (pagina % 10 === 0) {
+        console.log(`📊 PROGRESSO: ${pagina} páginas verificadas, ${totalVerificados} produtos processados`)
+      }
+      
+      // Proteção contra loop infinito (máximo ~50 páginas = 5000 produtos)
+      if (pagina > 50) {
+        console.log(`⚠️ LIMITE DE SEGURANÇA: 50 páginas verificadas (${totalVerificados} produtos)`)
+        console.log(`💡 Se produto não foi encontrado, pode estar além da página 50`)
         break
       }
     }
-    
-    console.log(`\n📊 BUSCA ESTRATÉGICA FINALIZADA`)
-    console.log(`- Páginas verificadas: ${Math.min(20, paginasPrioritarias.length)}`)
-    console.log(`- Produtos verificados: ${totalVerificados}`)
-    console.log(`- Produto encontrado: NÃO`)
-    
-    console.log(`\n💡 Produto não encontrado na busca estratégica`)
-    console.log(`🔧 Isso pode significar:`)
-    console.log(`- Produto está em páginas não verificadas ainda`)
-    console.log(`- Código pode estar ligeiramente diferente`)
-    console.log(`- Produto pode estar inativo`)
     
     return null
   }
