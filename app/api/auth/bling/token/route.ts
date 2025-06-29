@@ -17,18 +17,17 @@ export async function POST(request: NextRequest) {
 
     console.log('Trocando código por token...')
 
-    // Fazer a requisição para trocar o código pelo token
-    // O Bling pode precisar de form-encoded em vez de JSON
-    const params = new URLSearchParams()
-    params.append('grant_type', 'authorization_code')
-    params.append('code', code)
-    params.append('client_id', clientId)
-    params.append('client_secret', clientSecret)
-    params.append('redirect_uri', 'https://pbs-mu.vercel.app/api/auth/bling/callback')
+    // API v3 do Bling usa Basic Auth no header
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
     
-    const tokenResponse = await axios.post('https://www.bling.com.br/Api/v3/oauth/token', params.toString(), {
+    const tokenResponse = await axios.post('https://www.bling.com.br/Api/v3/oauth/token', {
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: 'https://pbs-mu.vercel.app/api/auth/bling/callback'
+    }, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/json',
         'Accept': 'application/json'
       }
     })
