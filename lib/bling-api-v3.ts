@@ -129,34 +129,64 @@ export class BlingAPIv3 {
       
       const itens = itensProcessados
 
-      const pedidoCompra = {
-        fornecedor: {
+      // Primeiro criar o fornecedor se não existir
+      let fornecedorId = null;
+      try {
+        const fornecedorResponse = await axios.post(`${this.baseUrl}/contatos`, {
           nome: "TRANSFERENCIA ENTRE LOJAS LTDA",
           codigo: "TRANSF001",
+          tipo: "F", // Fornecedor
           tipoPessoa: "J",
-          contribuinte: "9",
-          cpfCnpj: "00000000000191", // CNPJ genérico para transferência
+          contribuinte: "9", 
+          cpfCnpj: "00000000000191",
           ie: "ISENTO",
           endereco: {
             endereco: "Rua das Transferencias, 123",
             numero: "123",
-            bairro: "Centro",
+            bairro: "Centro", 
             cep: "59000000",
             municipio: "Natal",
             uf: "RN"
           }
-        },
-        itens: itens,
-        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas",
-        dataPrevisao: new Date().toISOString().split('T')[0],
-        situacao: {
-          valor: 6 // Situação "Em andamento"
+        }, {
+          headers: this.getHeaders()
+        });
+        
+        fornecedorId = fornecedorResponse.data.data.id;
+        console.log('✅ Fornecedor criado com ID:', fornecedorId);
+        
+      } catch (error: any) {
+        console.log('⚠️ Erro ao criar fornecedor (pode já existir):', error.response?.data?.error?.message);
+        // Tentar buscar fornecedor existente
+        try {
+          const searchResponse = await axios.get(`${this.baseUrl}/contatos?criterio=TRANSF001`, {
+            headers: this.getHeaders()
+          });
+          
+          if (searchResponse.data.data && searchResponse.data.data.length > 0) {
+            fornecedorId = searchResponse.data.data[0].id;
+            console.log('✅ Fornecedor encontrado com ID:', fornecedorId);
+          }
+        } catch (searchError) {
+          console.error('❌ Erro ao buscar fornecedor:', searchError);
         }
+      }
+
+      const pedidoCompra = {
+        contato: {
+          id: fornecedorId || 1 // Usar ID do fornecedor ou fallback
+        },
+        itens: itens.map(item => ({
+          ...item,
+          descricao: `Transferência - ${movements.find(m => m.produto.codigo === item.produto.codigo)?.observacoes || 'Produto'}`
+        })),
+        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas",
+        dataPrevisao: new Date().toISOString().split('T')[0]
       }
 
       console.log('📋 Dados do pedido de compra:', JSON.stringify(pedidoCompra, null, 2))
       
-      const response = await axios.post(`${this.baseUrl}/pedidocompra`, pedidoCompra, {
+      const response = await axios.post(`${this.baseUrl}/pedidos/compras`, pedidoCompra, {
         headers: this.getHeaders()
       })
       
