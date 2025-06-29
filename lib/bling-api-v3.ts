@@ -67,35 +67,14 @@ export class BlingAPIv3 {
     return this.createPurchaseOrderFromMovements(movements)
   }
 
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
   async findProductByCode(codigo: string): Promise<any> {
     try {
-      // Mapeamento de produtos conhecidos (cache para produtos já encontrados)
-      const produtosConhecidos: any = {
-        '7895140757357': { // WHEY PROTEIN ULTRA PREMIUM CHOCOLATE
-          id: 16451448017,
-          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:CHOCOLATE',
-          codigo: '7895140757357'
-        },
-        '7895140757388': { // NINHO COM MORANGO
-          id: 16451448018, // ID estimado
-          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:NINHO COM MORANGO',
-          codigo: '7895140757388'
-        },
-        '7895140757340': { // COOKIES
-          id: 16451448019, // ID estimado  
-          nome: '100% WHEY PROTEIN ULTRA PREMIUM - REFIL - 900G - PRONUTRI SABOR:COOKIES',
-          codigo: '7895140757340'
-        }
-      }
-      
-      // Verificar se é um produto conhecido
-      if (produtosConhecidos[codigo]) {
-        console.log(`✅ Produto encontrado no cache: ${produtosConhecidos[codigo].nome}`)
-        return produtosConhecidos[codigo]
-      }
-      
-      // Tentar buscar produto por código através da busca com critério
-      console.log(`🔍 Buscando produto por código: ${codigo}`)
+      // PASSO 1: Busca rápida por critério
+      console.log(`🔍 Busca rápida por código: ${codigo}`)
       
       const response = await axios.get(`${this.baseUrl}/produtos?criterio=${encodeURIComponent(codigo)}&limite=100`, {
         headers: this.getHeaders()
@@ -108,18 +87,138 @@ export class BlingAPIv3 {
         )
         
         if (produtoExato) {
-          console.log(`✅ Produto encontrado: ${produtoExato.nome} (ID: ${produtoExato.id})`)
+          console.log(`✅ Produto encontrado na busca rápida: ${produtoExato.nome}`)
           return produtoExato
         }
       }
       
-      console.log(`❌ Produto não encontrado por código: ${codigo}`)
-      return null
+      // PASSO 2: Busca inteligente por partes do código
+      console.log(`⚠️ Produto não encontrado na busca rápida. Tentando busca por partes...`)
+      
+      // Se o código tem mais de 6 dígitos, buscar por partes
+      if (codigo.length > 6) {
+        const parteInicial = codigo.substring(0, 8) // Primeiros 8 dígitos
+        console.log(`🔍 Buscando por parte inicial: ${parteInicial}`)
+        
+        const partialResponse = await axios.get(`${this.baseUrl}/produtos?criterio=${encodeURIComponent(parteInicial)}&limite=100`, {
+          headers: this.getHeaders()
+        })
+        
+        if (partialResponse.data.data && partialResponse.data.data.length > 0) {
+          const produtoExato = partialResponse.data.data.find((p: any) => 
+            p.codigo === codigo
+          )
+          
+          if (produtoExato) {
+            console.log(`✅ Produto encontrado na busca por partes: ${produtoExato.nome}`)
+            return produtoExato
+          }
+        }
+      }
+      
+      // PASSO 3: Busca estratégica - começar do final onde sabemos que o produto está
+      console.log(`⚠️ Iniciando busca estratégica paginada...`)
+      return await this.searchProductStrategic(codigo)
       
     } catch (error) {
       console.error(`❌ Erro ao buscar produto ${codigo}:`, error)
       return null
     }
+  }
+
+  private async searchProductStrategic(codigo: string): Promise<any> {
+    console.log(`🔍 BUSCA ESTRATÉGICA - Código: ${codigo}`)
+    console.log(`🎯 Estratégia: buscar páginas mais prováveis primeiro`)
+    
+    let totalVerificados = 0
+    
+    // ESTRATÉGIA: Sabemos que o produto está na página ~40 de 41
+    // Vamos buscar do final para o início para encontrar mais rápido
+    const totalPaginas = Math.ceil(4047 / 100) // ~41 páginas
+    
+    // Páginas prioritárias: do final para o início (onde provavelmente estão produtos novos)
+    const paginasPrioritarias = []
+    
+    // Começar das páginas finais (35-41)
+    for (let p = totalPaginas; p >= totalPaginas - 10; p--) {
+      if (p > 0) paginasPrioritarias.push(p)
+    }
+    
+    // Depois páginas do meio-final (20-34)
+    for (let p = totalPaginas - 11; p >= 20; p--) {
+      if (p > 0) paginasPrioritarias.push(p)
+    }
+    
+    // Se ainda não encontrou, páginas do início (1-19)
+    for (let p = 19; p >= 1; p--) {
+      paginasPrioritarias.push(p)
+    }
+    
+    console.log(`📄 Ordem de busca: páginas ${paginasPrioritarias.slice(0, 5).join(', ')}... (total: ${paginasPrioritarias.length})`)
+    
+    // Buscar nas páginas prioritárias
+    for (let i = 0; i < paginasPrioritarias.length; i++) {
+      const pagina = paginasPrioritarias[i]
+      
+      try {
+        console.log(`📄 Página ${pagina} (${i + 1}/${Math.min(20, paginasPrioritarias.length)})...`)
+        
+        // Delay para evitar rate limit
+        await this.delay(800)
+        
+        const response = await axios.get(`${this.baseUrl}/produtos?limite=100&pagina=${pagina}`, {
+          headers: this.getHeaders()
+        })
+        
+        const produtos = response.data.data || []
+        totalVerificados += produtos.length
+        
+        console.log(`   📦 ${produtos.length} produtos verificados`)
+        
+        // Verificar cada produto desta página
+        for (const produto of produtos) {
+          if (produto.codigo === codigo) {
+            console.log(`\n🎯 PRODUTO ENCONTRADO NA BUSCA ESTRATÉGICA!`)
+            console.log(`Nome: ${produto.nome}`)
+            console.log(`Código: ${produto.codigo}`)
+            console.log(`ID: ${produto.id}`)
+            console.log(`Página: ${pagina}`)
+            console.log(`Tentativa: ${i + 1}`)
+            
+            return produto
+          }
+        }
+        
+        // Limitar a 20 páginas para evitar timeout
+        if (i >= 19) {
+          console.log(`⏱️ Limite de 20 páginas atingido para evitar timeout`)
+          break
+        }
+        
+      } catch (error: any) {
+        if (error.response?.status === 429) {
+          console.log(`   ⏸️ Rate limit - aguardando 5s...`)
+          await this.delay(5000)
+          continue
+        }
+        
+        console.error(`❌ Erro na página ${pagina}:`, error.response?.status)
+        break
+      }
+    }
+    
+    console.log(`\n📊 BUSCA ESTRATÉGICA FINALIZADA`)
+    console.log(`- Páginas verificadas: ${Math.min(20, paginasPrioritarias.length)}`)
+    console.log(`- Produtos verificados: ${totalVerificados}`)
+    console.log(`- Produto encontrado: NÃO`)
+    
+    console.log(`\n💡 Produto não encontrado na busca estratégica`)
+    console.log(`🔧 Isso pode significar:`)
+    console.log(`- Produto está em páginas não verificadas ainda`)
+    console.log(`- Código pode estar ligeiramente diferente`)
+    console.log(`- Produto pode estar inativo`)
+    
+    return null
   }
 
   async createPurchaseOrderFromMovements(movements: BlingV3StockMovement[]): Promise<any> {
