@@ -51,16 +51,8 @@ export async function POST(
 
     const blingAPI = new BlingAPIv3(blingApiKey)
 
-    // Testar se o token é válido
-    const tokenValid = await blingAPI.validateToken()
-    console.log('✅ Token válido:', tokenValid)
-    
-    if (!tokenValid) {
-      return NextResponse.json(
-        { error: 'Token do Bling inválido ou expirado. Verifique a configuração da loja.' },
-        { status: 400 }
-      )
-    }
+    // Remover validação do token - deixar que o erro real apareça na movimentação
+    console.log('🔄 Pulando validação do token - tentando movimentação direta')
 
     // Validar se há produtos confirmados
     if (transfer.products.length === 0) {
