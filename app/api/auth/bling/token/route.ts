@@ -18,15 +18,17 @@ export async function POST(request: NextRequest) {
     console.log('Trocando código por token...')
 
     // Fazer a requisição para trocar o código pelo token
-    const tokenResponse = await axios.post('https://www.bling.com.br/Api/v3/oauth/token', {
-      grant_type: 'authorization_code',
-      code: code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: 'https://pbs-mu.vercel.app/api/auth/bling/callback'
-    }, {
+    // O Bling pode precisar de form-encoded em vez de JSON
+    const params = new URLSearchParams()
+    params.append('grant_type', 'authorization_code')
+    params.append('code', code)
+    params.append('client_id', clientId)
+    params.append('client_secret', clientSecret)
+    params.append('redirect_uri', 'https://pbs-mu.vercel.app/api/auth/bling/callback')
+    
+    const tokenResponse = await axios.post('https://www.bling.com.br/Api/v3/oauth/token', params.toString(), {
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json'
       }
     })
@@ -42,16 +44,39 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Erro ao trocar código por token:', error)
+    console.error('Detalhes do erro:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    })
     
     let errorMessage = 'Erro ao obter token de acesso'
-    if (error.response?.data?.error) {
-      errorMessage = error.response.data.error_description || error.response.data.error
+    
+    if (error.response?.data) {
+      // Log da resposta completa para debug
+      console.error('Resposta completa da API do Bling:', JSON.stringify(error.response.data, null, 2))
+      
+      if (error.response.data.error) {
+        errorMessage = error.response.data.error_description || error.response.data.error
+      } else if (error.response.data.message) {
+        errorMessage = error.response.data.message
+      } else {
+        errorMessage = `HTTP ${error.response.status}: ${error.response.statusText}`
+      }
     } else if (error.message) {
       errorMessage = error.message
     }
 
     return NextResponse.json(
-      { error: errorMessage },
+      { 
+        error: errorMessage,
+        details: {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data
+        }
+      },
       { status: 500 }
     )
   }

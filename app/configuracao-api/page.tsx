@@ -59,7 +59,8 @@ function ConfiguracaoAPIContent() {
         setSuccess('✅ Token de acesso obtido com sucesso!')
       } else {
         const errorData = await response.json()
-        setError(`Erro ao obter token: ${errorData.error}`)
+        console.error('Erro completo:', errorData)
+        setError(`Erro ao obter token: ${errorData.error || JSON.stringify(errorData)}`)
       }
     } catch (error: any) {
       setError(`Erro: ${error.message}`)
