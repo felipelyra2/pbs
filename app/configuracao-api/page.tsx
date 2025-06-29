@@ -141,7 +141,7 @@ function ConfiguracaoAPIContent() {
                   <li>Acesse: <a href="https://developer.bling.com.br/aplicativos" target="_blank" className="text-blue-600 hover:underline">https://developer.bling.com.br/aplicativos</a></li>
                   <li>Clique em "Criar Aplicativo"</li>
                   <li>Preencha os dados do aplicativo</li>
-                  <li>Em "URL de Redirecionamento", coloque: <code className="bg-gray-100 px-1 rounded">https://seu-dominio.vercel.app/api/auth/bling/callback</code></li>
+                  <li>Em "URL de Redirecionamento", coloque: <code className="bg-gray-100 px-1 rounded">https://pbs-mu.vercel.app/api/auth/bling/callback</code></li>
                   <li>Salve e anote o <strong>Client ID</strong> e <strong>Client Secret</strong></li>
                 </ol>
               </div>
@@ -197,7 +197,7 @@ function ConfiguracaoAPIContent() {
                   <p className="mb-4">Clique no botão abaixo para autorizar a aplicação no Bling:</p>
                   
                   <a
-                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&scope=read,write&redirect_uri=${encodeURIComponent(window.location.origin + '/api/auth/bling/callback')}`}
+                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&scope=read,write,products,stock&redirect_uri=${encodeURIComponent('https://pbs-mu.vercel.app/api/auth/bling/callback')}`}
                     target="_blank"
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >

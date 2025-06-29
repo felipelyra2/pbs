@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       code: code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/bling/callback`
+      redirect_uri: 'https://pbs-mu.vercel.app/api/auth/bling/callback'
     }, {
       headers: {
         'Content-Type': 'application/json',
