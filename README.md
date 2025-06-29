@@ -2,7 +2,7 @@
 
 Sistema completo para transferência entre lojas Bling na nuvem com tela de conferência.
 
-## 🚀 Funcionalidades
+## 🚀 Funcionalidades eeeeee
 
 ### Fluxo Principal
 1. **Cole o link da nota fiscal** do Bling
