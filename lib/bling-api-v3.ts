@@ -312,12 +312,15 @@ export class BlingAPIv3 {
       }
 
       const pedidoCompra = {
-        contato: {
-          id: fornecedorId || 1 // Usar ID do fornecedor ou fallback
-        },
+        idContato: fornecedorId || 17501595782, // Usar formato correto: idContato direto
         itens: itens.map(item => ({
-          ...item,
-          descricao: `Transferência - ${movements.find(m => m.produto.codigo === item.produto.codigo)?.observacoes || 'Produto'}`
+          produto: item.produto,
+          quantidade: item.quantidade,
+          valor: item.valor,
+          descricao: `Transferência - ${movements.find(m => 
+            (m.produto.codigo === item.produto.codigo) || 
+            (item.produto.id && m.produto.codigo)
+          )?.observacoes || 'Produto transferido automaticamente'}`
         })),
         observacoes: movements[0]?.observacoes || "Transferência automática entre lojas",
         dataPrevisao: new Date().toISOString().split('T')[0]
