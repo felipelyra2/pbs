@@ -5,10 +5,8 @@ import { useSearchParams } from 'next/navigation'
 
 // Função para obter a URL base do ambiente atual
 function getBaseUrl() {
-  if (typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return process.env.NEXTAUTH_URL || 'https://pbs-production-9e7c.up.railway.app'
+  // Sempre usar URL de produção para OAuth callback
+  return 'https://pbs-production-9e7c.up.railway.app'
 }
 
 function ConfiguracaoAPIContent() {
