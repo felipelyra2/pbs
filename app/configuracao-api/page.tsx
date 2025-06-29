@@ -20,8 +20,8 @@ function ConfiguracaoAPIContent() {
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [config, setConfig] = useState({
-    clientId: '',
-    clientSecret: '',
+    clientId: '831ef1bccb4dcda5a807ef3861d945a043bbecf2',
+    clientSecret: '0f747e0b84518e97409066f4bd7d8eadc644c1df5fca57a50e5ebf5494ed',
     accessToken: '',
     authCode: ''
   })
