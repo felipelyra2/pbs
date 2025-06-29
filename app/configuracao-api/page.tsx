@@ -220,10 +220,32 @@ function ConfiguracaoAPIContent() {
                 </div>
                 
                 <div className="mt-3 text-sm text-gray-600">
+                  {/* Link oficial do Bling */}
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-700 mb-2">
+                      🔗 Link oficial de autorização:
+                    </p>
+                    <code className="block p-2 bg-blue-100 rounded text-xs break-all">
+                      https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id={config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01
+                    </code>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => {
+                          const link = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01`
+                          navigator.clipboard.writeText(link)
+                          alert('Link copiado!')
+                        }}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                      >
+                        📋 Copiar
+                      </button>
+                    </div>
+                  </div>
+                  
                   <p className="mb-4">Clique no botão abaixo para autorizar a aplicação no Bling:</p>
                   
                   <a
-                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&scope=read,write,products,stock&redirect_uri=${encodeURIComponent('https://pbs-mu.vercel.app/api/auth/bling/callback')}`}
+                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01`}
                     target="_blank"
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
