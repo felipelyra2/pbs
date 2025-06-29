@@ -244,12 +244,12 @@ function ConfiguracaoAPIContent() {
                       🔗 Link oficial de autorização:
                     </p>
                     <code className="block p-2 bg-blue-100 rounded text-xs break-all">
-                      https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id={config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01
+                      https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id={config.clientId}&redirect_uri={baseUrl}/api/auth/bling/callback&state=f22ce9203099c266c4df7ea089ad0c01
                     </code>
                     <div className="mt-2 flex gap-2">
                       <button
                         onClick={() => {
-                          const link = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01`
+                          const link = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=${baseUrl}/api/auth/bling/callback&state=f22ce9203099c266c4df7ea089ad0c01`
                           navigator.clipboard.writeText(link)
                           alert('Link copiado!')
                         }}
@@ -263,7 +263,7 @@ function ConfiguracaoAPIContent() {
                   <p className="mb-4">Clique no botão abaixo para autorizar a aplicação no Bling:</p>
                   
                   <a
-                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&state=f22ce9203099c266c4df7ea089ad0c01`}
+                    href={`https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=${baseUrl}/api/auth/bling/callback&state=f22ce9203099c266c4df7ea089ad0c01`}
                     target="_blank"
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
