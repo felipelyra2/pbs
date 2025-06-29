@@ -67,18 +67,67 @@ export class BlingAPIv3 {
     return this.createPurchaseOrderFromMovements(movements)
   }
 
+  async findProductByCode(codigo: string): Promise<any> {
+    try {
+      // Tentar buscar produto por código através da busca com critério
+      console.log(`🔍 Buscando produto por código: ${codigo}`)
+      
+      const response = await axios.get(`${this.baseUrl}/produtos?criterio=${encodeURIComponent(codigo)}&limite=100`, {
+        headers: this.getHeaders()
+      })
+      
+      if (response.data.data && response.data.data.length > 0) {
+        // Procurar produto com código exato
+        const produtoExato = response.data.data.find((p: any) => 
+          p.codigo === codigo || p.gtin === codigo
+        )
+        
+        if (produtoExato) {
+          console.log(`✅ Produto encontrado: ${produtoExato.nome} (ID: ${produtoExato.id})`)
+          return produtoExato
+        }
+      }
+      
+      console.log(`❌ Produto não encontrado por código: ${codigo}`)
+      return null
+      
+    } catch (error) {
+      console.error(`❌ Erro ao buscar produto ${codigo}:`, error)
+      return null
+    }
+  }
+
   async createPurchaseOrderFromMovements(movements: BlingV3StockMovement[]): Promise<any> {
     try {
       console.log('🔄 Criando pedido de compra no Bling v3 (alternativa para movimentação):', movements)
       
-      // Converter movimentações em itens de pedido de compra
-      const itens = movements.map(movement => ({
-        produto: {
-          codigo: movement.produto.codigo
-        },
-        quantidade: movement.quantidade,
-        valor: 0.01 // Valor simbólico para transferência
-      }))
+      // Primeiro, tentar encontrar os produtos por código
+      const itensProcessados = []
+      
+      for (const movement of movements) {
+        const produto = await this.findProductByCode(movement.produto.codigo)
+        
+        if (produto) {
+          itensProcessados.push({
+            produto: {
+              id: produto.id
+            },
+            quantidade: movement.quantidade,
+            valor: 0.01
+          })
+        } else {
+          // Se não encontrar, tentar com código original
+          itensProcessados.push({
+            produto: {
+              codigo: movement.produto.codigo
+            },
+            quantidade: movement.quantidade,
+            valor: 0.01
+          })
+        }
+      }
+      
+      const itens = itensProcessados
 
       const pedidoCompra = {
         fornecedor: {
