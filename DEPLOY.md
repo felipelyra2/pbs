@@ -185,3 +185,4 @@ Para atualizar o sistema:
 3. Execute migrações se ne
 claude
 claude
+claude code

@@ -102,7 +102,7 @@ export class BlingAPIv3 {
 
       console.log('📋 Dados do pedido de compra:', JSON.stringify(pedidoCompra, null, 2))
       
-      const response = await axios.post(`${this.baseUrl}/pedidos/compras`, pedidoCompra, {
+      const response = await axios.post(`${this.baseUrl}/pedidocompra`, pedidoCompra, {
         headers: this.getHeaders()
       })
       
@@ -159,7 +159,7 @@ export class BlingAPIv3 {
     try {
       console.log('Criando pedido de compra no Bling v3:', orderData)
       
-      const response = await axios.post(`${this.baseUrl}/pedidos/compras`, orderData, {
+      const response = await axios.post(`${this.baseUrl}/pedidocompra`, orderData, {
         headers: this.getHeaders()
       })
 

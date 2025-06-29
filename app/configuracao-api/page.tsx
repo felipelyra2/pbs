@@ -3,6 +3,14 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
+// Função para obter a URL base do ambiente atual
+function getBaseUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return process.env.NEXTAUTH_URL || 'https://pbs-production-9e7c.up.railway.app'
+}
+
 function ConfiguracaoAPIContent() {
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
@@ -14,6 +22,11 @@ function ConfiguracaoAPIContent() {
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [baseUrl, setBaseUrl] = useState('')
+
+  useEffect(() => {
+    setBaseUrl(getBaseUrl())
+  }, [])
 
   useEffect(() => {
     // Verificar parâmetros da URL
@@ -167,7 +180,7 @@ function ConfiguracaoAPIContent() {
                   <li>Acesse: <a href="https://developer.bling.com.br/aplicativos" target="_blank" className="text-blue-600 hover:underline">https://developer.bling.com.br/aplicativos</a></li>
                   <li>Clique em "Criar Aplicativo"</li>
                   <li>Preencha os dados do aplicativo</li>
-                  <li>Em "URL de Redirecionamento", coloque: <code className="bg-gray-100 px-1 rounded">https://pbs-mu.vercel.app/api/auth/bling/callback</code></li>
+                  <li>Em "URL de Redirecionamento", coloque: <code className="bg-gray-100 px-1 rounded">{baseUrl}/api/auth/bling/callback</code></li>
                   <li>Salve e anote o <strong>Client ID</strong> e <strong>Client Secret</strong></li>
                 </ol>
               </div>
