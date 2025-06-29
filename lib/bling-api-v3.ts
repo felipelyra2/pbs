@@ -78,13 +78,26 @@ export class BlingAPIv3 {
       const pedidoCompra = {
         fornecedor: {
           nome: "TRANSFERENCIA ENTRE LOJAS LTDA",
+          codigo: "TRANSF001",
           tipoPessoa: "J",
-          contribuinte: "9", // Não contribuinte
-          ie: "ISENTO"
+          contribuinte: "9",
+          cpfCnpj: "00000000000191", // CNPJ genérico para transferência
+          ie: "ISENTO",
+          endereco: {
+            endereco: "Rua das Transferencias, 123",
+            numero: "123",
+            bairro: "Centro",
+            cep: "59000000",
+            municipio: "Natal",
+            uf: "RN"
+          }
         },
         itens: itens,
-        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas - Entrada para conferência",
-        dataPrevisao: new Date().toISOString().split('T')[0]
+        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas",
+        dataPrevisao: new Date().toISOString().split('T')[0],
+        situacao: {
+          valor: 6 // Situação "Em andamento"
+        }
       }
 
       console.log('📋 Dados do pedido de compra:', JSON.stringify(pedidoCompra, null, 2))
