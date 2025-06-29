@@ -38,9 +38,14 @@ function ConfiguracaoAPIContent() {
   const exchangeCodeForToken = async () => {
     try {
       setError('')
+      setSuccess('')
       
-      // Aqui faria a troca do código pelo token
-      // Por ora, vamos simular
+      console.log('Enviando dados:', {
+        code: config.authCode,
+        clientId: config.clientId,
+        clientSecret: config.clientSecret
+      })
+      
       const response = await fetch('/api/auth/bling/token', {
         method: 'POST',
         headers: {
@@ -53,17 +58,37 @@ function ConfiguracaoAPIContent() {
         })
       })
 
+      const responseText = await response.text()
+      console.log('Resposta bruta:', responseText)
+      
+      let responseData
+      try {
+        responseData = JSON.parse(responseText)
+      } catch (parseError) {
+        setError(`Erro ao interpretar resposta: ${responseText}`)
+        return
+      }
+
       if (response.ok) {
-        const data = await response.json()
-        setConfig(prev => ({ ...prev, accessToken: data.access_token }))
+        setConfig(prev => ({ ...prev, accessToken: responseData.access_token }))
         setSuccess('✅ Token de acesso obtido com sucesso!')
       } else {
-        const errorData = await response.json()
-        console.error('Erro completo:', errorData)
-        setError(`Erro ao obter token: ${errorData.error || JSON.stringify(errorData)}`)
+        console.error('Erro detalhado:', responseData)
+        
+        let errorMsg = 'Erro desconhecido'
+        if (responseData.error) {
+          errorMsg = responseData.error
+        } else if (responseData.details) {
+          errorMsg = `HTTP ${responseData.details.status}: ${JSON.stringify(responseData.details.data)}`
+        } else {
+          errorMsg = JSON.stringify(responseData)
+        }
+        
+        setError(`Erro ao obter token: ${errorMsg}`)
       }
     } catch (error: any) {
-      setError(`Erro: ${error.message}`)
+      console.error('Erro de rede:', error)
+      setError(`Erro de rede: ${error.message}`)
     }
   }
 
