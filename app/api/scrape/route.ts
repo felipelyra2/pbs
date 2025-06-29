@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { BlingScraper } from '@/lib/bling-scraper'
 import { prisma } from '@/lib/prisma'
 
+// Marcar como dinâmico para evitar erro de renderização estática
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { url, userId, storeId } = await request.json()

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import axios from 'axios'
 
+// Marcar como dinâmico para evitar erro de renderização estática
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { code, clientId, clientSecret } = await request.json()

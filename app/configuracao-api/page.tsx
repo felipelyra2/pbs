@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-export default function ConfiguracaoAPIPage() {
+function ConfiguracaoAPIContent() {
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [config, setConfig] = useState({
@@ -299,5 +299,17 @@ export default function ConfiguracaoAPIPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ConfiguracaoAPIPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Carregando configuração...</div>
+      </div>
+    }>
+      <ConfiguracaoAPIContent />
+    </Suspense>
   )
 }
