@@ -76,14 +76,15 @@ export class BlingAPIv3 {
       }))
 
       const pedidoCompra = {
-        numero: `TRANSF-${Date.now()}`, // Número único
         fornecedor: {
-          nome: "Transferência entre lojas",
-          tipoPessoa: "J" // Pessoa Jurídica
+          nome: "TRANSFERENCIA ENTRE LOJAS LTDA",
+          tipoPessoa: "J",
+          contribuinte: "9", // Não contribuinte
+          ie: "ISENTO"
         },
         itens: itens,
-        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas",
-        data: new Date().toISOString().split('T')[0] // Data atual
+        observacoes: movements[0]?.observacoes || "Transferência automática entre lojas - Entrada para conferência",
+        dataPrevisao: new Date().toISOString().split('T')[0]
       }
 
       console.log('📋 Dados do pedido de compra:', JSON.stringify(pedidoCompra, null, 2))
